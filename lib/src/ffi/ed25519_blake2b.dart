@@ -57,45 +57,44 @@ final int Function(Pointer<Uint8>, int, Pointer<Uint8>, Pointer<Uint8>)
         .asFunction<Verify>();
 
 // C account checksum function - void dart_account_checksum(unsigned char *checksum, unsigned char *publickey) {
-typedef checksum_func = Void Function(Pointer<Uint8> checksum, Pointer<Uint8> publickey);
-typedef Checksum = void Function(Pointer<Uint8> checksum, Pointer<Uint8> publickey);
-final void Function(
-        Pointer<Uint8>, Pointer<Uint8>)
-  checksumFunc = dyLib
-      .lookup<NativeFunction<checksum_func>>('dart_account_checksum')
-      .asFunction<Checksum>();
+typedef checksum_func = Void Function(
+    Pointer<Uint8> checksum, Pointer<Uint8> publickey);
+typedef Checksum = void Function(
+    Pointer<Uint8> checksum, Pointer<Uint8> publickey);
+final void Function(Pointer<Uint8>, Pointer<Uint8>) checksumFunc = dyLib
+    .lookup<NativeFunction<checksum_func>>('dart_account_checksum')
+    .asFunction<Checksum>();
 
 // C hash state block function -void dart_hash_state_block(
 //  unsigned char *hash, unsigned char *preamble, unsigned char *account, unsigned char *previous,
 //  unsigned char *rep, unsigned char *balance, unsigned char *link)
 typedef hash_func = Void Function(
-  Pointer<Uint8> hash,
-  Pointer<Uint8> preamble,
-  Pointer<Uint8> account,
-  Pointer<Uint8> previous,
-  Pointer<Uint8> rep,
-  Pointer<Uint8> balance,
-  Pointer<Uint8> link
-);
+    Pointer<Uint8> hash,
+    Pointer<Uint8> preamble,
+    Pointer<Uint8> account,
+    Pointer<Uint8> previous,
+    Pointer<Uint8> rep,
+    Pointer<Uint8> balance,
+    Pointer<Uint8> link);
 typedef BlockHash = void Function(
-  Pointer<Uint8> hash,
-  Pointer<Uint8> preamble,
-  Pointer<Uint8> account,
-  Pointer<Uint8> previous,
-  Pointer<Uint8> rep,
-  Pointer<Uint8> balance,
-  Pointer<Uint8> link
-);
-final void Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)
-   hashFunc = dyLib
-      .lookup<NativeFunction<hash_func>>('dart_hash_state_block')
-      .asFunction<BlockHash>();
+    Pointer<Uint8> hash,
+    Pointer<Uint8> preamble,
+    Pointer<Uint8> account,
+    Pointer<Uint8> previous,
+    Pointer<Uint8> rep,
+    Pointer<Uint8> balance,
+    Pointer<Uint8> link);
+final void Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>,
+        Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>)
+    hashFunc = dyLib
+        .lookup<NativeFunction<hash_func>>('dart_hash_state_block')
+        .asFunction<BlockHash>();
 
 class Ed25519Blake2b {
   // Copy byte array to native heap
   static Pointer<Uint8> _bytesToPointer(Uint8List bytes) {
     final length = bytes.lengthInBytes;
-    final result = allocate<Uint8>(count: length);
+    final result = calloc.allocate<Uint8>(length);
 
     for (var i = 0; i < length; ++i) {
       result[i] = bytes[i];
@@ -107,18 +106,18 @@ class Ed25519Blake2b {
   // Get public key from secret key
   static Uint8List getPubkey(Uint8List secretKey) {
     final pointer = _bytesToPointer(secretKey);
-    final result = allocate<Uint8>(count: 32);
+    final result = calloc.allocate<Uint8>(32);
     pubkeyFunc(pointer, result);
-    free(pointer);
+    calloc.free(pointer);
     return result.asTypedList(32);
   }
 
   // Derive private key from seed at index
   static Uint8List derivePrivkey(Uint8List seed, int index) {
     final seedPointer = _bytesToPointer(seed);
-    final result = allocate<Uint8>(count: 32);
+    final result = calloc.allocate<Uint8>(32);
     privkeyFunc(result, seedPointer, index);
-    free(seedPointer);
+    (seedPointer);
     return result.asTypedList(32);
   }
 
@@ -127,11 +126,11 @@ class Ed25519Blake2b {
     final mPointer = _bytesToPointer(m);
     final skPointer = _bytesToPointer(sk);
     final randPointer = _bytesToPointer(rand32());
-    final result = allocate<Uint8>(count: 64);
+    final result = calloc.allocate<Uint8>(64);
     signFunc(result, m.lengthInBytes, mPointer, randPointer, skPointer);
-    free(mPointer);
-    free(skPointer);
-    free(randPointer);
+    calloc.free(mPointer);
+    calloc.free(skPointer);
+    calloc.free(randPointer);
     return result.asTypedList(64);
   }
 
@@ -142,34 +141,39 @@ class Ed25519Blake2b {
     final sigPointer = _bytesToPointer(sig);
     bool valid =
         verifyFunc(sigPointer, m.lengthInBytes, mPointer, pkPointer) == 1;
-    free(mPointer);
-    free(pkPointer);
-    free(sigPointer);
+    calloc.free(mPointer);
+    calloc.free(pkPointer);
+    calloc.free(sigPointer);
     return valid;
   }
 
   // Compute state hash
-  static Uint8List computeHash(
-    Uint8List account, Uint8List previous, Uint8List rep, Uint8List balance, Uint8List link
-  ) {
-      final Pointer<Uint8> hashP = allocate<Uint8>(count: 32);
-      final Pointer<Uint8> preambleP = _bytesToPointer(NanoHelpers.hexToBytes("0000000000000000000000000000000000000000000000000000000000000006"));
-      final Pointer<Uint8> accountP = _bytesToPointer(account);
-      final Pointer<Uint8> previousP = _bytesToPointer(previous);
-      final Pointer<Uint8> repP = _bytesToPointer(rep);
-      final Pointer<Uint8> balanceP = _bytesToPointer(balance);
-      final Pointer<Uint8> linkP = _bytesToPointer(link);
-      hashFunc(hashP, preambleP, accountP, previousP, repP, balanceP, linkP);
-      free(preambleP); free(accountP); free(previousP); free(repP); free(balanceP); free(linkP);
-      return hashP.asTypedList(32);
+  static Uint8List computeHash(Uint8List account, Uint8List previous,
+      Uint8List rep, Uint8List balance, Uint8List link) {
+    final Pointer<Uint8> hashP = calloc.allocate<Uint8>(32);
+    final Pointer<Uint8> preambleP = _bytesToPointer(NanoHelpers.hexToBytes(
+        "0000000000000000000000000000000000000000000000000000000000000006"));
+    final Pointer<Uint8> accountP = _bytesToPointer(account);
+    final Pointer<Uint8> previousP = _bytesToPointer(previous);
+    final Pointer<Uint8> repP = _bytesToPointer(rep);
+    final Pointer<Uint8> balanceP = _bytesToPointer(balance);
+    final Pointer<Uint8> linkP = _bytesToPointer(link);
+    hashFunc(hashP, preambleP, accountP, previousP, repP, balanceP, linkP);
+    calloc.free(preambleP);
+    calloc.free(accountP);
+    calloc.free(previousP);
+    calloc.free(repP);
+    calloc.free(balanceP);
+    calloc.free(linkP);
+    return hashP.asTypedList(32);
   }
 
   // Account checksum
   static Uint8List accountChecksum(Uint8List publickey) {
-    final Pointer<Uint8> checksumP = allocate<Uint8>(count: 5);
+    final Pointer<Uint8> checksumP = calloc.allocate<Uint8>(5);
     final Pointer<Uint8> pkP = _bytesToPointer(publickey);
     checksumFunc(checksumP, pkP);
-    free(pkP);
+    calloc.free(pkP);
     return checksumP.asTypedList(5);
   }
 
